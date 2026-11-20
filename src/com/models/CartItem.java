@@ -1,0 +1,62 @@
+package com.models;
+
+public class CartItem {
+	private String productId;
+	private String productName;
+	private double price;
+	private int quantity;
+	private double totalPrice;
+
+	public CartItem(String productId, String productName, double price, int quantity, double totalPrice) {
+		super();
+		this.productId = productId;
+		this.productName = productName;
+		this.price = price;
+		this.quantity = quantity;
+		this.totalPrice = totalPrice;
+	}
+
+	public String getProductId() {
+		return productId;
+	}
+
+	public void setProductId(String productId) {
+		this.productId = productId;
+	}
+
+	public String getProductName() {
+		return productName;
+	}
+
+	public void setProductName(String productName) {
+		this.productName = productName;
+	}
+
+	public double getPrice() {
+		return price;
+	}
+
+	public int getQuantity() {
+		return quantity;
+	}
+
+	public void setQuantity(int quantity) {
+		this.quantity = quantity;
+	}
+
+	public double getTotalPrice() {
+		return totalPrice;
+	}
+
+	public void setTotalPrice(double totalPrice) {
+		double price = (totalPrice * 18) / 100;
+		this.totalPrice = totalPrice + price;
+	}
+
+	@Override
+	public String toString() {
+		return "CartItem [productId=" + productId + ", productName=" + productName + ", price=" + price + ", quantity="
+				+ quantity + ", totalPrice=" + totalPrice + "]";
+	}
+
+}

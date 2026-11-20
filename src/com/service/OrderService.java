@@ -1,0 +1,77 @@
+package com.service;
+
+import java.util.List;
+
+import com.models.CartItem;
+import com.models.Order;
+import com.models.Product;
+import com.repository.OrderRepository;
+import com.repository.ProductRepository;
+
+/**
+ * 
+ */
+public class OrderService {
+
+	// Getting all Orders From DataBase
+	private static List<Order> getAllOrders() {
+		return OrderRepository.getAllOrders();
+	}
+
+	public static void placeOrder(String CustomerId) {
+		Order existingOrder = getAllOrders().stream().filter(a -> a.getCustomerId().equals(CustomerId)).findFirst()
+				.orElse(null);
+
+		if (existingOrder == null) {
+			System.out.println("No Cart Found");
+			return;
+		}
+
+		existingOrder.setOrderStatus("Ordered");
+		System.out.println("Order Place \n" + existingOrder);
+	}
+
+	public static void showOrder(String CustomerId) {
+		Order existingOrder = getAllOrders().stream().filter(a -> a.getCustomerId().equals(CustomerId)).findFirst()
+				.orElse(null);
+
+		if (existingOrder == null) {
+			System.out.println("No Cart Found");
+			return;
+		}
+		System.out.println(existingOrder.getCart());
+	}
+
+	public static void cancelOrder(String productName, String CustomerId) {
+		Order existingOrder = getAllOrders().stream().filter(a -> a.getCustomerId().equals(CustomerId)).findFirst()
+				.orElse(null);
+
+		if (existingOrder == null) {
+			System.out.println("No Cart Found");
+			return;
+		}
+
+		if (existingOrder.getOrderStatus().equals("Ordered")) {
+			getAllOrders().remove(existingOrder);
+			System.out.println("order Removed");
+			return;
+		}
+
+		List<CartItem> results = existingOrder.getCart();
+
+		CartItem cart = results.stream().filter(a -> a.getProductName().equalsIgnoreCase(productName)).findFirst()
+				.orElse(null);
+
+		if (cart == null) {
+			System.err.println("Please Enter Correct Product Name");
+			return;
+		}
+
+		Product p = ProductRepository.getAllProducts().stream()
+				.filter(a -> a.getProductId().equals(cart.getProductId())).findFirst().orElse(null);
+
+		p.setQuantity(p.getQuantity() + 1);
+		
+		System.out.println("No Orders Found");
+	}
+}
