@@ -13,103 +13,103 @@ import com.repository.CustomerRepository;
 import com.repository.OrderRepository;
 import com.repository.ProductRepository;
 
-/**
- * CartService handle All Business Logic of Cart-related Operations
- * 
- * <h4>Responsibilities:
- * <h4>
- * <p>
- * 1. Add Product To Cart
- * <p>
- * <p>
- * 2. View Cart
- * <p>
- * <p>
- * 3. Remove Product From Cart
- * <p>
- * 
- */
 public class CartService {
 
-	// Generates a unique ID for each order
-	private static int uniqeId = 1;
+	private static int uniqueId = 1;
 
-	// Gets all orders from the repository
 	private static List<Order> getAllOrders() {
 		return OrderRepository.getAllOrders();
 	}
 
+	// Creates a CartItem without reducing product stock.
 	private static CartItem createCart(Product p) throws InsufficientStockException {
-		CartItem item;
-		if (p.getQuantity() >= 1) {
-			p.setQuantity(p.getQuantity() - 1);
-			item = new CartItem(p.getProductId(), p.getProductName(), p.getPrice(), p.getQuantity(), p.getPrice());
-		} else {
+
+		if (p.getQuantity() < 1) {
 			throw new InsufficientStockException();
 		}
 
-		return item;
+		return new CartItem(p.getProductId(), p.getProductName(), p.getPrice(), 1, p.getPrice());
 	}
 
-	// Adds products to the cart or creates a new order
+	// Adds products to the cart or creates a new cart.
 	public static void addToCart(String productName, String email) {
 
-		// Get Customer Id From This Email;
 		if (email == null) {
 			System.err.println("[!] Login Failed: Customer account not found.");
 			return;
 		}
 
-		// Checking the Product
-		Product result = ProductRepository.getAllProducts().stream()
-				.filter(a -> a.getProductName().equalsIgnoreCase(productName)).findFirst().orElse(null);
+		Product product = ProductRepository.getAllProducts().stream()
+				.filter(p -> p.getProductName().equalsIgnoreCase(productName)).findFirst().orElse(null);
 
-		if (result == null) {
+		if (product == null) {
 			System.err.println("[!] Failed: Product not found.");
 			return;
 		}
 
-		Customer existingCustomer = CustomerRepository.getAllCustomer().stream().filter(a -> a.getEmail().equals(email))
-				.findFirst().orElse(null);
+		Customer customer = CustomerRepository.getAllCustomer().stream()
+				.filter(c -> c.getEmail().equalsIgnoreCase(email)).findFirst().orElse(null);
 
-		if (existingCustomer == null) {
+		if (customer == null) {
 			System.err.println("[!] Login Failed: Customer account not found.");
 			return;
 		}
 
-		// Checks whether the customer already has an order
-		Order existingOrder = getAllOrders().stream()
-				.filter(a -> a.getCustomerId().equals(existingCustomer.getCustomerId())).findFirst().orElse(null);
+		Order existingOrder = getAllOrders().stream().filter(o -> o.getCustomerId().equals(customer.getCustomerId()))
+				.findFirst().orElse(null);
 
 		try {
-			CartItem cart = (CartItem) createCart(result);
 
-			// Updates the existing order if found
-			if (existingOrder != null) {
-				existingOrder.setCart(cart);
-				System.out.println("Added To Cart ");
+			// Check stock before adding the product.
+			if (product.getQuantity() < 1) {
+				throw new InsufficientStockException();
+			}
+
+			// Create a new order if the customer doesn't have one.
+			if (existingOrder == null) {
+
+				CartItem cartItem = createCart(product);
+
+				int orderId = uniqueId++;
+
+				String date = LocalDate.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy"));
+
+				Order newOrder = new Order(String.valueOf(orderId), customer.getCustomerId(), cartItem,
+						cartItem.getTotalPrice(), "WAITING TO CONFIRMED", date);
+
+				OrderRepository.addOrderToDb(newOrder);
+
+				System.out.println("New Cart Is Created");
 				return;
 			}
 
-			// Creates a new order if no existing order is found
-			int randomId = uniqeId++;
-			String date = LocalDate.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy"));
+			// Check whether the product already exists in the cart.
+			CartItem existingItem = existingOrder.getCart().stream()
+					.filter(item -> item.getProductId().equals(product.getProductId())).findFirst().orElse(null);
 
-			Order newOrder = new Order(String.valueOf(randomId), existingCustomer.getCustomerId(), cart, 0.0,
-					"WAITING TO CONFIRMED", date);
+			if (existingItem != null) {
 
-			// Saves the new order in the repository
-			OrderRepository.addOrderToDb(newOrder);
+				existingItem.setQuantity(existingItem.getQuantity() + 1);
 
-			System.out.println("New Cart is Created");
+				existingItem.setTotalPrice(existingItem.getPrice() * existingItem.getQuantity());
+
+				System.out.println("Added To Cart");
+				return;
+			}
+
+			// Add a new product to the existing cart.
+			CartItem newItem = createCart(product);
+
+			existingOrder.setCart(newItem);
+
+			System.out.println("Added To Cart");
 
 		} catch (InsufficientStockException e) {
 			System.err.println(e.getMessage());
 		}
-
 	}
 
-	// Displays the customer's cart details
+	// Displays the customer's cart details.
 	public static void viewCart(String email) {
 
 		if (email == null) {
@@ -117,75 +117,68 @@ public class CartService {
 			return;
 		}
 
-		Customer existingCustomer = CustomerRepository.getAllCustomer().stream().filter(a -> a.getEmail().equals(email))
-				.findFirst().orElse(null);
+		Customer customer = CustomerRepository.getAllCustomer().stream()
+				.filter(c -> c.getEmail().equalsIgnoreCase(email)).findFirst().orElse(null);
 
-		if (existingCustomer == null) {
+		if (customer == null) {
 			System.err.println("[!] Login Failed: Customer account not found.");
 			return;
 		}
 
-		// Finds the order belonging to the customer
-		Order existingOrder = getAllOrders().stream()
-				.filter(a -> a.getCustomerId().equals(existingCustomer.getCustomerId())).findFirst().orElse(null);
+		Order existingOrder = getAllOrders().stream().filter(o -> o.getCustomerId().equals(customer.getCustomerId()))
+				.findFirst().orElse(null);
 
-		// Displays a message if the cart is empty
-		if (existingOrder == null) {
+		if (existingOrder == null || existingOrder.getCart().isEmpty()) {
 			System.out.println("Cart Is Empty");
 			return;
 		}
 
-		// Displays the cart details
 		System.out.println();
-
-		System.out.println("========== ORDER DETAILS ==========");
-
-		System.out.println("\nProduct Details:");
+		System.out.println("========== CART DETAILS ==========");
+		System.out.println("\nProduct | Price | Quantity | Total");
 		System.out.println("-----------------------------------");
 
-		for (CartItem e : existingOrder.getCart()) {
-
-			System.out.println(e.getProductName() + " " + e.getPrice() + " " + e.getTotalPrice());
+		for (CartItem item : existingOrder.getCart()) {
+			System.out.println(item.getProductName() + " | " + item.getPrice() + " | " + item.getQuantity() + " | "
+					+ item.getTotalPrice());
 		}
 
-		System.out.println("-----------------------------------");
-		System.out
-				.println("Total Price: " + existingOrder.getCart().stream().mapToDouble(a -> a.getTotalPrice()).sum());
+		double totalAmount = existingOrder.getCart().stream().mapToDouble(CartItem::getTotalPrice).sum();
 
+		System.out.println("-----------------------------------");
+		System.out.println("Total Cart Amount: " + totalAmount);
 		System.out.println("===================================");
 	}
 
-	// Removes a product from the customer's cart
-	public static void removeProductFromCart(String productName, String CustomerId) {
+	// Removes a product from the customer's cart.
+	public static void removeProductFromCart(String productName, String customerId) {
 
-		// Finds the customer's existing order
-		Order existingOrder = getAllOrders().stream().filter(a -> a.getCustomerId().equals(CustomerId)).findFirst()
+		Order existingOrder = getAllOrders().stream().filter(o -> o.getCustomerId().equals(customerId)).findFirst()
 				.orElse(null);
 
-		// Checks whether the customer has an order
 		if (existingOrder == null) {
 			System.out.println("No Items In Cart");
 			return;
 		}
 
-		// Removes the requested cart item
-		List<CartItem> results = existingOrder.getCart();
+		CartItem cartItem = existingOrder.getCart().stream()
+				.filter(item -> item.getProductName().equalsIgnoreCase(productName)).findFirst().orElse(null);
 
-		CartItem cart = results.stream().filter(a -> a.getProductName().equalsIgnoreCase(productName)).findFirst()
-				.orElse(null);
-
-		if (cart == null) {
+		if (cartItem == null) {
 			System.err.println("Please Enter Correct Product Name");
 			return;
 		}
 
-		Product p = ProductRepository.getAllProducts().stream()
-				.filter(a -> a.getProductId().equals(cart.getProductId())).findFirst().orElse(null);
+		Product product = ProductRepository.getAllProducts().stream()
+				.filter(p -> p.getProductId().equals(cartItem.getProductId())).findFirst().orElse(null);
 
-		p.setQuantity(p.getQuantity() + 1);
+		if (product != null) {
+			product.setQuantity(product.getQuantity() + cartItem.getQuantity());
+		}
 
-		existingOrder.removeCart(cart);
-		System.out.println("Product removed");
+		
+		existingOrder.removeCart(cartItem);
 
+		System.out.println("Product Removed Successfully");
 	}
 }

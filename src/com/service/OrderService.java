@@ -36,10 +36,26 @@ public class OrderService {
 				.orElse(null);
 
 		if (existingOrder == null) {
-			System.out.println("No Cart Found");
+			System.out.println("No Orders Found");
 			return;
 		}
-		System.out.println(existingOrder.getCart());
+		System.out.println("\n========== ORDERS DETAILS ==========");
+
+		System.out.println();
+		System.out.println("Order Status " + existingOrder.getOrderStatus());
+		System.out.println();
+
+		System.out.printf("%-12s %-20s %-12s %-10s %-15s%n", "Product ID", "Product Name", "Price", "Quantity",
+				"Total Price");
+
+		System.out.println("----------------------------------------------------------------");
+
+		existingOrder.getCart().forEach(item -> {
+			System.out.printf("%-12s %-20s ₹%-11.2f %-10d ₹%-14.2f%n", item.getProductId(), item.getProductName(),
+					item.getPrice(), item.getQuantity(), item.getTotalPrice());
+		});
+
+		System.out.println("================================================================");
 	}
 
 	public static void cancelOrder(String productName, String CustomerId) {
@@ -47,7 +63,7 @@ public class OrderService {
 				.orElse(null);
 
 		if (existingOrder == null) {
-			System.out.println("No Cart Found");
+			System.out.println("No Orders Found");
 			return;
 		}
 
@@ -71,7 +87,7 @@ public class OrderService {
 				.filter(a -> a.getProductId().equals(cart.getProductId())).findFirst().orElse(null);
 
 		p.setQuantity(p.getQuantity() + 1);
-		
+
 		System.out.println("No Orders Found");
 	}
 }
